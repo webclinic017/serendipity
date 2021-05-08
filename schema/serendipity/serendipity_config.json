@@ -1,0 +1,84 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Configuration of a data store",
+    "description": "Schema for configuring a data store.",
+    "version": "0.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "SerendipityConfig": {
+        "type": "object",
+        "properties": {
+          "entities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Entity"
+            }
+          },
+          "finance": {
+            "$ref": "#/components/schemas/Finance"
+          }
+        },
+        "description": "Data store configuration object"
+      },
+      "Entity": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "A person or an organization"
+      },
+      "Finance": {
+        "required": [
+          "document_path"
+        ],
+        "type": "object",
+        "properties": {
+          "document_path": {
+            "description": "Path to the directory with documents",
+            "type": "string"
+          }
+        },
+        "description": "Configuration for financial data"
+      }
+    }
+  },
+  "paths": {
+    "/serendipity_config": {
+      "get": {
+        "operationId": "serendipity_config_get",
+        "description": "Data store configuration",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": "test",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SerendipityConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

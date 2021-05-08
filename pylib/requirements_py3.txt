@@ -1,0 +1,23 @@
+# For numpy
+cython
+# For extracting tables from PDFs
+camelot-py
+# For google spreadsheet access
+gspread
+# For plotting
+matplotlib
+# For google spreadsheet access
+oauth2client
+# For camelot
+opencv-python
+# Tables
+pandas
+# For extracting text from PDFs
+pdfquery
+# For yahoo Finance
+requests
+requests_html
+# For OpenAPI
+urllib3
+# Yahoo Finance
+yahoo_fin

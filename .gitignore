@@ -1,0 +1,10 @@
+deps
+.DS_Store
+pylib/serendipity/gen
+javascript/src/gen
+javascript/dist
+*.pyc
+__pycache__
+.clasprc.json
+node_modules
+package-lock.json

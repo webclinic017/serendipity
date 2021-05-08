@@ -1,0 +1,319 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "version": "0.0.0",
+        "title": "Serendipity Finance",
+        "description": "Finance API for Serendipity."
+    },
+    "servers": [
+        {
+            "url": "/"
+        }
+    ],
+    "components": {
+        "schemas": {
+            "AccountOwner": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": { 
+                        "type": "string"
+                    }
+                }
+            },
+            "AssetValue": {
+                "type": "object",
+                "properties": {
+                    "start": {
+                        "$ref": "money.json"
+                    },
+                    "end": {
+                        "$ref": "money.json"
+                    }
+                },
+                "required": [
+                    "start",
+                    "end"
+                ]
+            },
+            "BankTransaction": {
+                "type": "object",
+                "description": "Fields for a bank or credit card transaction",
+                "properties": {
+                    "account_to": {
+                        "type": "string"
+                    },
+                    "amount": {
+                        "$ref": "money.json"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "memo": {
+                        "type": "string"
+                    },
+                    "posted_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "transaction_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "transaction_id": {
+                        "type": "string"
+                    },
+                    "transaction_type": {
+                        "type": "string",
+                        "enum": [
+                            "credit",
+                            "debit"
+                        ]
+                    }
+                },
+                "required": [
+                    "amount",
+                    "description",
+                    "posted_date",
+                    "transaction_type"
+                ]
+            },
+            "BrokerageHolding": {
+                "type": "object",
+                "description": "Superset of all the fields that can be held in a financial institution account",
+                "properties": {
+                    "cost_basis": {
+                        "$ref": "money.json"
+                    },
+                    "purchase_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "quantity": {
+                        "type": "number"
+                    },
+                    "symbol": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "$ref": "#/components/schemas/AssetValue"
+                    }
+                },
+                "required": [
+                    "quantity",
+                    "symbol",
+                    "unit_cost",
+                    "value"
+                ]
+            },
+            "BrokerageTransaction": {
+                "type": "object",
+                "description": "All the fields for a brokerage transaction",
+                "properties": {
+                    "amount": {
+                        "$ref": "money.json"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "commission": {
+                        "$ref": "money.json"
+                    },
+                    "price": {
+                        "$ref": "money.json"
+                    },
+                    "quantity": {
+                        "type": "number"
+                    },
+                    "settlement_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "settled"
+                        ]
+                    },
+                    "symbol": {
+                        "type": "string"
+                    },
+                    "trade_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "transaction_type": {
+                        "type": "string",
+                        "enum": [
+                            "deposit",
+                            "dividend",
+                            "exchange",
+                            "fee",
+                            "interest",
+                            "option_assigned",
+                            "option_expired",
+                            "option_exercised",
+                            "purchase",
+                            "sale",
+                            "sale_option_exercised",
+                            "transfer",
+                            "unknown",
+                            "withdrawal"
+                        ]
+                    }
+                },
+                "required": [
+                    "amount",
+                    "price",
+                    "quantity",
+                    "status",
+                    "symbol",
+                    "trade_date",
+                    "transaction_type"
+                ]
+            },
+            "BrokerageRealizedLot": {
+                "type": "object",
+                "description": "All the fields for a brokerage sale",
+                "properties": {
+                    "acquisition_amount": {
+                        "$ref": "money.json"
+                    },
+                    "acquisition_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "acquisition_price": {
+                        "$ref": "money.json"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "liquidation_amount": {
+                        "$ref": "money.json"
+                    },
+                    "liquidation_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "liquidation_price": {
+                        "$ref": "money.json"
+                    },
+                    "quantity": {
+                        "type": "number"
+                    },
+                    "symbol": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "acquisition_amount",
+                    "acquisition_date",
+                    "acquisition_price",
+                    "description",
+                    "liquidation_amount",
+                    "liquidation_date",
+                    "liquidation_price",
+                    "liquidation_price",
+                    "symbol"
+                ]
+            },
+            "Institution": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Statement": {
+                "type": "object",
+                "properties": {
+                    "account_number": {
+                        "type": "string"
+                    },
+                    "bank_transactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schema/BankTransaction"
+                        }
+                    },
+                    "brokerage_holdings": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BrokerageHolding"
+                        }
+                    },
+                    "brokerage_realized_lots": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BrokerageRealizedLot"
+                        }
+                    },
+                    "brokerage_transactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BrokerageTransaction"
+                        }
+                    },
+                    "cash_value": {
+                        "$ref": "#/components/schemas/AssetValue"
+                    },
+                    "credit_card_transactions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schema/BankTransaction"
+                        }
+                    },
+                    "end_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "institution_name": {
+                        "type": "string"
+                    },
+                    "investment_value": {
+                        "$ref": "#/components/schemas/AssetValue"
+                    },
+                    "start_date": {
+                        "$ref": "date_time.json"
+                    },
+                    "total_value": {
+                        "$ref": "#/components/schemas/AssetValue"
+                    }
+                },
+                "required": [
+                    "start_date",
+                    "end_date",
+                    "account_number",
+                    "institution_name"
+                ]
+            }
+        }
+    },
+    "paths": {
+        "/statements": {
+            "get": {
+                "operationId": "get_statements",
+                "responses": {
+                    "default": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Statement"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

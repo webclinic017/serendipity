@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build_models",
+			"path": "javascript/",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: build_models - javascript",
+			"detail": "../update_models.sh"
+		},
+		{
+			"type": "npm",
+			"script": "build",
+			"path": "javascript/",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"type": "npm",
+			"script": "test",
+			"path": "javascript/",
+			"group": "test",
+			"problemMatcher": [],
+		}
+	]
+}

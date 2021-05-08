@@ -1,0 +1,12 @@
+diff --git a/node_modules/@types/google-apps-script/google-apps-script.base.d.ts b/node_modules/@types/google-apps-script/google-apps-script.base.d.ts
+index d0acc68..e99e95a 100644
+--- a/node_modules/@types/google-apps-script/google-apps-script.base.d.ts
++++ b/node_modules/@types/google-apps-script/google-apps-script.base.d.ts
+@@ -509,7 +509,6 @@ declare var Logger: GoogleAppsScript.Base.Logger;
+ // conflicts with MimeType in lib.d.ts
+ // declare var MimeType: GoogleAppsScript.Base.MimeType;
+ declare var Session: GoogleAppsScript.Base.Session;
+-declare var console: GoogleAppsScript.Base.console;
+ 
+ // The name `Date` conflicts with lib.es5.d.ts.
+ // - We cannot include lib.es5.d.ts with Apps Script though because Apps Script is ES3

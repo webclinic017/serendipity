@@ -1,0 +1,4 @@
+"COB Date","Security #","Symbol","CUSIP #","Security Description","Account Nickname","Account Registration","Account #","Acquisition Date","Quantity","Unit Cost ($)","Cost Basis ($)","Value ($)","Unrealized Gain/Loss ($)","Unrealized Gain/Loss (%)","Short/Long"
+"11/20/2020","ZZZZZ","XXXX#A2023D450000","--","CALL XXXX   45.00 EXP 01-20-23","Sample Account","CMA-Edge","11A-11B11","10/19/2020","2","52.81","1,111.11","1,110.12","(361.30)","(3.42)","(Short Term)"
+"11/20/2020","HHHHH","YYY","666666666","HHHH HHHH","Sample Account 1","CMA-Edge","11A-11B11","3/23/2020","100","5.26","526.50","948.00","421.50","80.06","(Short Term)"
+"11/20/2020","HHHHH","YYY","666666666","HHHH HHHH","Sample Account 2","CMA-Edge","22A-11B11","3/23/2020","100","5.26","526.50","948.00","421.50","80.06","(Short Term)"

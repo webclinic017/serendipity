@@ -1,0 +1,6 @@
+.clasprc.json
+**/*.d.ts
+**/node_modules/**
+**/openapi_patches/**
+package.json
+**/patches/**

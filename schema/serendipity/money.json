@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "description": "A money type for all financial-related fields, such as balance, payment due, and so on.",
+    "title": "Money type",
+    "properties": 
+    {
+        "currency_code": 
+        {
+            "$ref": "currency_code.json"
+        },
+        "value": 
+        {
+            "type": "number"
+        }
+    },
+    "required": 
+    [
+        "currency_code",
+        "value"
+    ]
+}
