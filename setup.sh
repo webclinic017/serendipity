@@ -26,4 +26,4 @@ then
 fi
 
 cd ${script_dir}/gcloud/serendipity && npm install && cd -
-cd ${script_dir}/javascript && npm install && cd -
+cd ${script_dir}/js && npm install && cd -

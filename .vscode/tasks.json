@@ -4,23 +4,23 @@
 		{
 			"type": "npm",
 			"script": "build_models",
-			"path": "javascript/",
+			"path": "js/",
 			"group": "build",
 			"problemMatcher": [],
-			"label": "npm: build_models - javascript",
+			"label": "npm: build_models - js",
 			"detail": "../update_models.sh"
 		},
 		{
 			"type": "npm",
 			"script": "build",
-			"path": "javascript/",
+			"path": "js/",
 			"group": "build",
 			"problemMatcher": []
 		},
 		{
 			"type": "npm",
 			"script": "test",
-			"path": "javascript/",
+			"path": "js/",
 			"group": "test",
 			"problemMatcher": [],
 		}

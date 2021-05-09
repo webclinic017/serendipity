@@ -1,8 +1,8 @@
 deps
 .DS_Store
 pylib/serendipity/gen
-javascript/src/gen
-javascript/dist
+js/src/gen
+js/dist
 *.pyc
 __pycache__
 .clasprc.json

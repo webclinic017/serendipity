@@ -18,7 +18,7 @@ root_dir=${pylib_dir}/..
 py_gen_dir=${pylib_dir}/serendipity/gen
 py_openapi_patch_dir=${pylib_dir}/openapi_patches
 
-appscript_dir=${script_dir}/javascript/
+appscript_dir=${script_dir}/js/
 appscript_gen_dir=${appscript_dir}/src/gen
 appscript_openapi_patch_dir=${appscript_dir}/openapi_patches
 
