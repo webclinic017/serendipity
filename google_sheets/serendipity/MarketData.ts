@@ -49,15 +49,28 @@ export class MarketData
     let endDate = new Date()
     let startDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDay() - 1);
     endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDay() + 1);
-    let urls:string[] = [];
+    let requests:GoogleAppsScript.URL_Fetch.URLFetchRequest[] = [];
     symbols.forEach((s: string) => {
-      urls.push(MarketData.buildUrl(s, startDate, endDate))
+      requests.push({
+        url: (MarketData.buildUrl(s, startDate, endDate)),
+        muteHttpExceptions: true
+      });
     });
-    let responses = UrlFetchApp.fetchAll(urls);  
+    let responses = UrlFetchApp.fetchAll(requests);  
     let prices:number[] = [];
     responses.forEach((r) => {
-      let json = JSON.parse(r.getContentText());
-      let price = json.chart.result[0].meta.regularMarketPrice;
+      let price:number = 0;
+      let text = r.getContentText();
+      let json = JSON.parse(text);
+      if ("chart" in json) {
+        let chart = json.chart;
+        if (chart != null && "result" in chart) {
+          let result = chart.result;
+          if (result != null && result.length > 0) {
+            price = parseFloat(json.chart.result[0].meta.regularMarketPrice);
+          }
+        }
+      }
       prices.push(price);
     });
     return prices;
@@ -122,10 +135,22 @@ function testMarketDataLastPrice()
     }
 }
 
+function testEqual(expected:any, actual:any, name:string)
+{
+  if (expected != actual) {
+    throw `Test Failure: ${name} expected:${expected} actual:${actual}`;
+  }
+}
+
 function testMarketDataLastPrices()
 {
-    let p = MarketData.lastPrices(["TSLA","ROKU","BYND"]);
-    if (p.length != 3 || p[0] <= 0 || p[1] <= 0 || p[2] <= 0) {
-        throw "Test Failure: Expecting prices to be a non-zero float";
+  let symbols:string[] = ["TSLA","ROKU","BYND", "INVALID_SYMBOL"];
+    let p = MarketData.lastPrices(symbols);
+    testEqual(p.length, 4, "Number of returned responses");
+    for (var i:number = 0; i < 3; i = i + 1) {
+      if (p[i] <= 0) {
+        throw `Test Failure: Expected price of ${symbols[i]} to be greater than 0`; 
+      }
     }
+    testEqual(p[p.length - 1], 0, `Price of ${symbols[p.length - 1]}`);
 }

@@ -25,5 +25,5 @@ then
     brew install gsed
 fi
 
-cd ${script_dir}/gcloud/serendipity && npm install && cd -
+cd ${script_dir}/google_sheets/serendipity && npm install && cd -
 cd ${script_dir}/js && npm install && cd -
