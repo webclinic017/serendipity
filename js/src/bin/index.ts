@@ -125,11 +125,9 @@ let args = yargs.scriptName("serendipity-cli")
                     StatementExtractorFactory.processStatement(f).forEach(s=> {
                         s.brokerageRealizedLots.forEach(l => {
                                 updateGain(l.liquidationDate, l.liquidationAmount.value - l.acquisitionAmount.value);
-                                if (l.liquidationDate.getMonth() == 3) {
-                                    console.log(`${l.liquidationDate}, ${l.liquidationAmount.value - l.acquisitionAmount.value}, ${l.symbol}, ${gainsByMonth[formatDate(l.liquidationDate, "yyyy/MM")]}`);
-                                }    
                             }
                         );
+
                         s.brokerageTransactions.forEach(l => {
                             if (l.transactionType == BrokerageTransactionTransactionTypeEnum.Dividend 
                                 || l.transactionType == BrokerageTransactionTransactionTypeEnum.Interest
