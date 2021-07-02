@@ -3,7 +3,7 @@ import * as Finance from '../finance';
 import * as fs from 'fs';
 import * as csvwriter from 'csv-writer';
 import { BrokerageHoldingConsolidator, InteractiveBrokers, StatementExtractorFactory } from '../finance';
-import { BrokerageRealizedLot, BrokerageTransactionTransactionTypeEnum, Statement } from '../gen/finance';
+import { BrokerageTransactionTransactionTypeEnum, PriorMtmPosition, Statement } from '../gen/finance';
 import { format as formatDate } from 'date-fns';
 import { DefaultObject } from '../utils';
 
@@ -122,21 +122,57 @@ let args = yargs.scriptName("serendipity-cli")
                 }
 
                 (args["inputs"] as Array<string>).forEach(f => {
-                    StatementExtractorFactory.processStatement(f).forEach(s=> {
-                        s.brokerageRealizedLots.forEach(l => {
-                                updateGain(l.liquidationDate, l.liquidationAmount.value - l.acquisitionAmount.value);
+                    StatementExtractorFactory.processStatement(f).forEach(s => {
+        
+                        let gainsBySymbol: { [symbol:string]: number } = {}
+                        let updateGainSymbol = (symbol:string, amount:number) => {
+                            if (symbol in gainsBySymbol) {
+                                gainsBySymbol[symbol] += amount;
                             }
-                        );
-
+                            else {
+                                gainsBySymbol[symbol] = amount;
+                            }
+                        }
+        
+                        let hasMtm:boolean = false;
+                        let hasRealized:boolean = false;
                         s.brokerageTransactions.forEach(l => {
                             if (l.transactionType == BrokerageTransactionTransactionTypeEnum.Dividend 
                                 || l.transactionType == BrokerageTransactionTransactionTypeEnum.Interest
                                 || l.transactionType == BrokerageTransactionTransactionTypeEnum.Fee) {
-                                    updateGain(l.settlementDate, l.amount.value);
+                                updateGain(l.settlementDate, l.amount.value);
+                            }
+                            else if (l.transactionType == BrokerageTransactionTransactionTypeEnum.Sale 
+                                || l.transactionType == BrokerageTransactionTransactionTypeEnum.Purchase) {
+                                if (l.mtmPnl != null) {
+                                    hasMtm = true;
+                                    updateGain(l.tradeDate, l.mtmPnl.value + l.commission.value);
+                                }
+                                else if (l.realizedPnl != null) {
+                                    hasRealized = true;
+                                    updateGain(l.tradeDate, l.realizedPnl.value);
                                 }
                             }
-                        );
-                    })
+                        });
+
+                        if (hasMtm && s.priorMtmPositions != null) {
+                            s.priorMtmPositions.forEach(l => {
+                                updateGain(l.date, l.pnl.value);
+                            });
+                        }
+
+                        if (!hasMtm && !hasRealized) {
+                            s.brokerageRealizedLots.forEach(l => {
+                                    updateGain(l.liquidationDate, l.liquidationAmount.value - l.acquisitionAmount.value);
+                                }
+                            );
+                        }
+
+                        Object.keys(gainsBySymbol).sort().forEach(k => {
+                            console.log(`${k} ${gainsBySymbol[k]}`);
+                        })    
+                    });
+
                 });
 
                 let entries:DefaultObject[] = [];

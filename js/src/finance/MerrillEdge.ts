@@ -1,5 +1,5 @@
 import { DefaultObject, Utils } from "../utils";
-import { BrokerageHolding, BrokerageHoldingFromJSON, BrokerageRealizedLot, BrokerageTransaction, BrokerageTransactionStatusEnum, BrokerageTransactionTransactionTypeEnum, Statement } from "../gen/finance/models";
+import { BrokerageHolding, BrokerageRealizedLot, BrokerageTransaction, BrokerageTransactionStatusEnum, BrokerageTransactionTransactionTypeEnum, Statement } from "../gen/finance/models";
 import { CsvStatementExtractor } from './';
 import { parse as parseDate } from 'date-fns';
 import { StatementExtractorFactory } from "./StatementExtractorFactory";

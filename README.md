@@ -8,21 +8,29 @@ Serendipity alo provides an API to export structured models into formats consume
 
 Serendipity provides a google sheets library that uses the Yahoo Finance library to get market data for US stocks and options.
 
-## Tested for Importing
+## Implemented Features
 
-Data from the following institutions has been tested:
+- Data can be imported from the following institutions:
+    - Bank of America (QFX)
+    - Capital One (QFX)
+    - Chase (QFX)
+    - Fidelity (CSV)
+    - Interactive Brokers (CSV)
+    - Merrill Edge (CSV,QFX)
+    - Wells Fargo (QFX)
+- Institution specific functionality:
+    - Interactive Brokers
+        - Download CSV files from flex queries
+- Data can be exported to the following tools:
+    - Tiller Money
 
-- Bank of America
-- Capital One
-- Chase
-- Fidelity
-- Interactive Brokers
-- Merrill Edge
-- Wells Fargo
+## Using Serendipity via the CLI
+
+## Institution Notes
 
 ### Merrill Edge
 
-**To export the current account holdings**:
+#### Export the current account holdings
 
 1. Go to the [download page](https://olui2.fs.ml.com/TFPDownloads/TFPDownloads.aspx)
 2. In `Choose category or account`, choose the accounts you want to export
@@ -30,17 +38,113 @@ Data from the following institutions has been tested:
 4. In `Choose Settings`, choose `Security`. Ensure `Tax lots only` is checked
 5. In `Download`, click the CSV button
 
+#### Export the realized lots
+
+**Note: This does not include dividends and interest**
+1. Go to the [download page](https://olui2.fs.ml.com/TFPDownloads/TFPDownloads.aspx)
+2. In `Choose category or account`, choose the accounts you want to export
+3. In `Choose application`, choose `Spreadsheets and text`
+4. In `Choose Settings`, choose `Realized gain/loss`. Ensure `Tax lots only` is checked
+5. In `Download`, click the CSV button
+
+#### Export activity (including divides and interest)
+1. Go to the [download page](https://olui2.fs.ml.com/TFPDownloads/TFPDownloads.aspx)
+2. In `Choose category or account`, choose the accounts you want to export
+3. In `Choose application`, choose `Spreadsheets and text`
+4. In `Choose Settings`, choose `Realized gain/loss`. Ensure `Tax lots only` is checked
+5. In `Download`, click the CSV button
+
 ### Interactive Brokers
 
-Setup a flex query to export the relevant data to Serendipity.
+Setup a flex query to export the relevant data to Serendipity. For all flex queries select the following delivery
+configuration:
 
-TODO: List of fields that are useful for Serendipity.
+- Format: CSV
+- Include header and trailer records: Yes
+- Include column headers: Yes
+- Include section code and line descriptor: Yes
 
-## Tested for Exporting
+#### To export the realized Lots
 
-Data exported has been tested with the following tools:
+In the Activity Flex Query Details, select the following:
+- Trades
+    - Options
+        - Executions
+        - Closed Lots
+        - Wash Sales
+    - Fields
+        - Account Id
+        - Cost Basis
+        - Currency
+        - Date/Time
+        - Description
+        - IB Commission
+        - NetCash
+        - Open/Close Indicator
+        - Open Date Time
+        - Quantity
+        - Realized P/L or MTM P/L (depending on the type of reporting you'd like)
+        - Settle Date Target
+        - Symbol
+        - Trade Price
+        - Transaction Type
+        - When Realized
 
-- Tiller Money
+#### To export the MTM P/L
+In the Activity Flex Query Details, select the following:
+
+- Trades
+    - Options
+        - Executions
+    - Fields
+        - Account Id
+        - Currency
+        - Date/Time
+        - Description
+        - IB Commission
+        - NetCash
+        - Quantity
+        - MTM P/L
+        - Settle Date Target
+        - Symbol
+        - Transaction Type
+- Prior Period Positions
+    - Fields
+        - Account ID
+        - Date
+        - Description
+        - Prior MTM PNL
+        - Symbol
+    - Fields
+        - Account Id
+        - Amount
+        - Currency
+        - Date/Time
+        - Description
+        - Settle Date
+        - Symbol
+        - Type
+
+#### To export cash transactions
+
+- Cash Transactions
+    - Options
+        - Dividends
+        - Payment in Lieu of Dividends
+        - Other Fees
+        - Broker Interest Paid/Received
+        - Bond Interest Paid/Received
+        - Price Adjustments
+        - Commission Adjustments
+    - Fields
+        - Account Id
+        - Amount
+        - Currency
+        - Date/Time
+        - Description
+        - Settle Date
+        - Symbol
+        - Type
 
 ## Development Setup
 
@@ -80,7 +184,7 @@ Running `update_models.sh` generates the OpenAPI models for python and nodejs. T
 
 Some of the functionality in Serendipity is surfaces as a Google Apps Script library for inclusion in Google sheets, and Google apps.
 
-### Development Workflow
+### Google Apps Script Development Workflow
 
 Development is either in the Google cloud or locally via the use of the open source tool `clasp`.
 

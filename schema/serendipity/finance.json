@@ -120,10 +120,13 @@
                     "amount": {
                         "$ref": "money.json"
                     },
+                    "commission": {
+                        "$ref": "money.json"
+                    },
                     "description": {
                         "type": "string"
                     },
-                    "commission": {
+                    "mtm_pnl": {
                         "$ref": "money.json"
                     },
                     "price": {
@@ -131,6 +134,9 @@
                     },
                     "quantity": {
                         "type": "number"
+                    },
+                    "realized_pnl": {
+                        "$ref": "money.json"
                     },
                     "settlement_date": {
                         "$ref": "date_time.json"
@@ -233,6 +239,26 @@
                     }
                 }
             },
+            "PriorMtmPosition": {
+                "type": "object",
+                "required": [
+
+                ],
+                "properties": {
+                    "date": {
+                        "$ref": "date_time.json"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "pnl": {
+                        "$ref": "money.json"
+                    },
+                    "symbol": {
+                        "type": "string"
+                    }
+                }
+            },
             "Statement": {
                 "type": "object",
                 "properties": {
@@ -242,7 +268,7 @@
                     "bank_transactions": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schema/BankTransaction"
+                            "$ref": "#/components/schemas/BankTransaction"
                         }
                     },
                     "brokerage_holdings": {
@@ -269,7 +295,7 @@
                     "credit_card_transactions": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schema/BankTransaction"
+                            "$ref": "#/components/schemas/BankTransaction"
                         }
                     },
                     "end_date": {
@@ -280,6 +306,12 @@
                     },
                     "investment_value": {
                         "$ref": "#/components/schemas/AssetValue"
+                    },
+                    "prior_mtm_positions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PriorMtmPosition"
+                        }
                     },
                     "start_date": {
                         "$ref": "date_time.json"

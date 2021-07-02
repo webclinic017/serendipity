@@ -4,7 +4,7 @@ import * as xml2json from 'xml2json';
 import { DefaultObject, Utils } from "../utils";
 import { CsvStatementExtractor } from './'
 import { parse as parseDate } from 'date-fns';
-import { StatementExtractorFactory } from "./StatementExtractorFactory";
+import {  StatementExtractorFactory } from "./StatementExtractorFactory";
 import { 
     BankTransaction, 
     BankTransactionTransactionTypeEnum,
@@ -13,7 +13,9 @@ import {
     BrokerageTransactionStatusEnum, 
     BrokerageTransactionTransactionTypeEnum, 
     BrokerageTransaction,
-    Statement } from '../gen/finance/models';
+    PriorMtmPosition,
+    Statement, 
+    Money} from '../gen/finance/models';
 
 export class InteractiveBrokers
 {
@@ -41,27 +43,27 @@ export class InteractiveBrokers
             referenceCode = l["FlexStatementResponse"]["ReferenceCode"] as string;
         }
 
-        // get the statement
+        // get the statement. retry every timeout seconds for errors that can be retried and bail if not. 
+        let timeoutSecs:number = 5;
+        let url = `${this.flexServiceUrl}.GetStatement?t=${token}&q=${referenceCode}&v=3`;
         while (true)
         {
-            let url = `${this.flexServiceUrl}.GetStatement?t=${token}&q=${referenceCode}&v=3`;
             let response = await fetch(url);
+            let text = await response.text();
             let contentType = response.headers.get("Content-Type");
             if (contentType == "text/xml") {
-                let xml = await(response.text());
-                let json = xml2json.toJson(xml, { coerce: false, arrayNotation: false, object: true});
+                let json = xml2json.toJson(text, { coerce: false, arrayNotation: false, object: true});
                 let errorMessage:string = (json["FlexStatementResponse"] as DefaultObject)["ErrorMessage"] as string;
                 if (errorMessage.indexOf("try again") >= 0) {
                     // wait 5 seconds if should retry
-                    console.log(`Interactive brokers flex api returned ${errorMessage}. Retrying...`);
-                    await new Promise(r => setTimeout(r, 5000));
+                    await new Promise(r => setTimeout(r, timeoutSecs*1000));
                 }
                 else {
-                    throw `Flex query returned error ${xml}`;
+                    throw `Flex query returned error ${text}`;
                 }
             }
             else {
-                return await (await(fetch(url))).text();
+                return text;
             }
         }
     }
@@ -100,7 +102,8 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
             brokerageHoldings: [],
             brokerageTransactions: [],
             bankTransactions: [],
-            brokerageRealizedLots: []
+            brokerageRealizedLots: [],
+            priorMtmPositions: []
         }
 
         this.statements.push(statement);
@@ -120,17 +123,14 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
         }
     }
 
-    private transactionSettleDate(row: DefaultObject)
+    private getDateTime(row: DefaultObject)
     {
-        for (let i in ["SettleDate", "SettleDateTarget"]) {
-            if (i in row) {
-                return row[i];
-            }    
-        }
-        throw `Settle Date Not Found`;
+        return parseDate(Utils.fallbackKeyValue(row, ["Date/Time", "DateTime"]), "yyyyMMdd;HHmmss", new Date());
     }
 
     private transactionForRow(row: DefaultObject): BrokerageTransaction {
+        let realizedPnlStr = Utils.firstNonEmptyValue(row, ["FifoPnlRealized"]);
+        let mtmPnlStr = Utils.firstNonEmptyValue(row, ["MtmPnl"]);
         return {
             amount: { 
                 currencyCode: row["CurrencyPrimary"], 
@@ -142,22 +142,20 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
             },
             commission: {
                 currencyCode: row["CurrencyPrimary"], 
-                value: (() => {
-                    if ("NetCash" in row)
-                        return 0;
-                    return Utils.normalizeNumberStringToNumber(row["Commission"]) ;
-                })()
+                value:  Utils.normalizeNumberStringToNumber(Utils.fallbackKeyValue(row,["IBCommission", "Commission"]))
             },
             quantity: parseFloat(row["Quantity"]),
-            tradeDate: parseDate(Utils.fallbackKeyValue(row, ["Date/Time", "DateTime"]), "yyyyMMdd;HHmmss", new Date()),
-            settlementDate: parseDate(Utils.fallbackKeyValue(row, ["SettleDate","SettleDateTarget"]), "yyyyMMdd", new Date()),
+            tradeDate: this.getDateTime(row),
+            settlementDate: parseDate(Utils.firstNonEmptyValue(row, ["SettleDate","SettleDateTarget","TradeDate"]), "yyyyMMdd", new Date()),
             price: { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(Utils.fallbackKeyValue(row, ["Price","TradePrice"])) },
             symbol: InteractiveBrokers.symbolToOccCode(row["Symbol"]),
             status: BrokerageTransactionStatusEnum.Settled,
             transactionType: Utils.normalizeNumberStringToNumber(row["Quantity"]) > 0 
                 ? BrokerageTransactionTransactionTypeEnum.Purchase 
-                : BrokerageTransactionTransactionTypeEnum.Sale
-        }
+                : BrokerageTransactionTransactionTypeEnum.Sale,
+            realizedPnl: realizedPnlStr != null ? { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(realizedPnlStr) } : null,
+            mtmPnl: mtmPnlStr != null ? { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(mtmPnlStr) } : null
+        };
     }
 
     private positionClosed(row:DefaultObject):boolean
@@ -165,34 +163,43 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
         return Utils.fallbackKeyValue(row, ["Open/CloseIndicator"]).indexOf("C") >= 0;
     }
 
+    // To process realized lots, for each execution that's closed process the closed lots and the wash sales.
+    //
+    // TODO: this is incomplete due ot handling of wash sales. The cost basis of specific lots 
+    // is likely to be incorrect when wash sales occur.
     private processRealizedLots(rows:DefaultObject[], rowIndex: number, closedLot: BrokerageTransaction): BrokerageRealizedLot[]
     {
-        // IB includes the lots with the original cost basis after the row with the sell order. 
         let ret: BrokerageRealizedLot[] = [];
         let originalRow = rows[rowIndex];
-        let remainingQuantity = closedLot.quantity;
-        for (let j = rowIndex + 1; j < rows.length && remainingQuantity != 0; j = j + 1) {
+
+        // gather the original lots and wash sale lots
+        let originalLots: { date: Date, price: Money, costBasis: Money, quantity:number }[]= []; 
+        let washSales : { amount: Money, quantity:number }[] = [];
+        for (let j = rowIndex + 1; j < rows.length; j = j + 1) {
             let row = rows[j];
-            let isClosed = this.positionClosed(row);
-            if (isClosed
+            let hasOpenDateTime = Utils.fallbackKeyValue(row, ["OpenDateTime"]).length > 0;
+            let isClosed = this.positionClosed(row) && hasOpenDateTime;
+            let isWashSale = hasOpenDateTime && row["WhenRealized"].length > 0;
+            if ((isClosed || isWashSale)
                 && row["ClientAccountID"] == originalRow["ClientAccountID"]
                 && row["Symbol"] == originalRow["Symbol"] 
-                && row["TransactionType"].length == 0 
-                && Utils.fallbackKeyValue(row, ["OpenDateTime"]).length > 0)
+                && row["TransactionType"].length == 0)
             {
                 let quantity = Utils.normalizeNumberStringToNumber(row["Quantity"]);
-                ret.push({
-                    acquisitionAmount:  { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(row["CostBasis"]) },
-                    acquisitionDate: parseDate(row["OpenDateTime"], "yyyyMMdd;HHmmss", new Date()),
-                    acquisitionPrice:  { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(row["TradePrice"]) },
-                    description: closedLot.description,
-                    liquidationAmount: { currencyCode: closedLot.amount.currencyCode, value: (closedLot.amount.value * quantity) / (-1 * closedLot.quantity) },
-                    liquidationDate: closedLot.tradeDate,
-                    liquidationPrice: closedLot.price,
-                    quantity: quantity,
-                    symbol: closedLot.symbol
-                });
-                remainingQuantity += quantity;
+                if (isClosed) {
+                    originalLots.push({
+                        date: parseDate(row["OpenDateTime"], "yyyyMMdd;HHmmss", new Date()),
+                        price: { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(row["TradePrice"]) },
+                        costBasis: { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(row["CostBasis"]) },
+                        quantity: quantity
+                    });
+                }
+                else if (isWashSale) {
+                    washSales.push({
+                        quantity: quantity,
+                        amount: { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(row["FifoPnlRealized"]) }
+                    });
+                }
             }
             else 
             {
@@ -200,9 +207,50 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
             }
         }
 
-        // some lots simultaneously open and close positions (such as a roll), in this case the quantity won't match up.
-        if (remainingQuantity != 0 && originalRow["Open/CloseIndicator"] != "C;O") {
-            throw `Not all the original lots found for ${closedLot.tradeDate} ${closedLot.symbol}`;
+        // setup the realized lots
+        for (let i = 0; i < originalLots.length; ++i) {
+            let ol = originalLots[i];
+            ret.push({
+                acquisitionAmount:  ol.costBasis,
+                acquisitionDate: ol.date,
+                acquisitionPrice: ol.price,
+                description: closedLot.description,
+                liquidationAmount: { currencyCode: closedLot.amount.currencyCode, value: (closedLot.amount.value * ol.quantity) / (-1 * closedLot.quantity) },
+                liquidationDate: closedLot.tradeDate,
+                liquidationPrice: closedLot.price,
+                quantity: ol.quantity,
+                symbol: closedLot.symbol
+            });
+        }
+        
+        // process wash sale adjustments. go through each wash sale lot and adjust the next realized lot
+        if (ret.length > 0)
+        {
+            let currentRealizedLotIndex = -1;
+            let currentRealizedQuantity = 0;
+            for (let i = 0; i < washSales.length; ++i) {
+                if (currentRealizedQuantity == 0) {
+                    currentRealizedLotIndex++;
+                    if (currentRealizedLotIndex >= ret.length) {
+                        throw `Not all wash sales processed for ${originalRow["Symbol"]}`;
+                    }
+                    currentRealizedQuantity = ret[currentRealizedLotIndex].quantity;
+                }
+
+                let washLot = washSales[i];
+                let adjustmentQuantity = Math.min(currentRealizedQuantity, washLot.quantity);
+                let adjustmentAmount = washLot.amount.value * adjustmentQuantity / washLot.quantity;
+                washLot.quantity -= adjustmentQuantity;
+                washLot.amount.value -= adjustmentAmount;
+                ret[currentRealizedLotIndex].acquisitionAmount.value -= adjustmentAmount; 
+                if (washLot.quantity > 0) {
+                    i = i - 1;
+                }
+                currentRealizedQuantity -= adjustmentQuantity;
+                if (currentRealizedQuantity < 0) {
+                    throw `Unexpected error with wash sale quantity`;
+                }
+            }
         }
 
         return ret;
@@ -216,7 +264,7 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
                 : BankTransactionTransactionTypeEnum.Debit,
             description: row["Description"],
             category: row["Type"],
-            postedDate: parseDate(row["Date/Time"], "yyyyMMdd;HHmmss", new Date())
+            postedDate: this.getDateTime(row)
         }
     }
 
@@ -240,9 +288,18 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
             price: { currencyCode: row["CurrencyPrimary"], value: 0 },
             status: BrokerageTransactionStatusEnum.Settled,
             transactionType: this.gCashBrokerageTransactionType[row["Type"]],
-            tradeDate: parseDate(row["Date/Time"], "yyyyMMdd;HHmmss", new Date()),
+            tradeDate: this.getDateTime(row),
             symbol: row["Symbol"]
         };
+    }
+
+    private priorMtmPositionForRow(row: DefaultObject): PriorMtmPosition {
+        return {
+            description: row["Description"],
+            date: parseDate(row["Date"], "yyyyMMdd", new Date()),
+            pnl: { currencyCode: row["CurrencyPrimary"], value: Utils.normalizeNumberStringToNumber(row["PriorMtmPnl"]) },
+            symbol: row["Symbol"]
+        }
     }
 
     private groupByCode(data: string[][]) {
@@ -310,7 +367,7 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
             for (let i = 0; i < rows.length; i = i + 1) {
                 let row = rows[i];
                 let statement = this.statementForRow(row);
-                if ("TransactionType" in row && row["TransactionType"] == "ExchTrade") {
+                if ("TransactionType" in row && row["TransactionType"].length > 0) {
                     let transaction = this.transactionForRow(row);
                     statement.brokerageTransactions.push(transaction);
                     // Each closed lot can be followed by one or lots that describe how the lot was opened
@@ -330,6 +387,14 @@ export class InteractiveBrokersCsvExtractor extends CsvStatementExtractor
                     if (t != null) {
                         statement.brokerageTransactions.push(t);
                     }
+                }
+            })
+        }
+        if ("PPPO" in groups) {
+            groups["PPPO"].forEach(row => {
+                let statement = this.statementForRow(row);
+                if (statement != null) {
+                    statement.priorMtmPositions.push(this.priorMtmPositionForRow(row));
                 }
             })
         }

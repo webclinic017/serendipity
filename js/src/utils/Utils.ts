@@ -55,6 +55,19 @@ export class Utils
         }
         return "";        
     }
+
+    public static firstNonEmptyValue(obj:DefaultObject, keys: string[])
+    {
+        for (let k of keys) {
+            if (k in obj) {
+                let v = obj[k];
+                if (v != null && v.length > 0) {
+                    return v;
+                }
+            }
+        }
+        return null;        
+    }
 }
 
 export type DefaultObject = {[key:string]: string};
